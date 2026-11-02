@@ -1,8 +1,21 @@
+import path from 'node:path';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import license from 'rollup-plugin-license';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    license({
+      thirdParty: {
+        multipleVersions: true,
+        output: {
+          file: path.resolve(process.cwd(), 'dist/web/THIRD_PARTY_LICENSES.txt'),
+          encoding: 'utf-8',
+        },
+      },
+    }),
+  ],
   server: {
     host: '127.0.0.1',
     port: 5173,
@@ -11,6 +24,6 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: 'dist',
+    outDir: 'dist/web',
   },
 });

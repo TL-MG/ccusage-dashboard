@@ -1,39 +1,76 @@
 {
-  "name": "ccusage-ui",
-  "version": "1.0.0",
-  "private": true,
+  "name": "ccusage-dashboard",
+  "version": "0.1.0",
   "type": "module",
-  "description": "Local web dashboard for visualizing coding agent token usage with ccusage.",
+  "description": "Community web dashboard for visualizing coding agent token usage with ccusage.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TL-MG/ccusage-dashboard.git"
+  },
+  "homepage": "https://github.com/TL-MG/ccusage-dashboard#readme",
+  "bugs": {
+    "url": "https://github.com/TL-MG/ccusage-dashboard/issues"
+  },
+  "bin": {
+    "ccusage-dashboard": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "THIRD_PARTY_NOTICES.md",
+    "LICENSE"
+  ],
   "engines": {
     "node": ">=22.13.0"
   },
   "packageManager": "pnpm@11.28.5",
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "ccusage",
+    "claude-code",
+    "codex",
+    "token-usage",
+    "dashboard",
+    "cli"
+  ],
   "scripts": {
     "dev": "concurrently -k -n api,web -c blue,green \"pnpm:dev:server\" \"pnpm:dev:web\"",
     "dev:server": "tsx watch server/index.ts",
     "dev:web": "vite --host 127.0.0.1",
-    "build": "tsc --noEmit && vite build",
-    "start": "NODE_ENV=production tsx server/index.ts",
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build": "pnpm clean && pnpm build:web && pnpm build:server",
+    "build:web": "tsc --noEmit && vite build",
+    "build:server": "tsup",
+    "start": "node dist/cli.js --no-open",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit --pretty false"
+    "typecheck": "tsc --noEmit --pretty false",
+    "prepack": "pnpm build",
+    "prepublishOnly": "pnpm test"
   },
   "dependencies": {
-    "@ant-design/icons": "^6.1.0",
     "@fastify/static": "^8.2.0",
-    "antd": "^6.0.0",
-    "dayjs": "^1.11.18",
-    "echarts": "^6.0.0",
-    "fastify": "^5.6.1",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "ccusage": "^20.0.45",
+    "fastify": "^5.6.1"
   },
   "devDependencies": {
+    "@ant-design/icons": "^6.1.0",
     "@types/node": "^24.10.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.1.0",
+    "antd": "^6.0.0",
     "concurrently": "^9.2.1",
+    "dayjs": "^1.11.18",
+    "echarts": "^6.0.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "rollup-plugin-license": "^3.7.1",
+    "tsup": "^8.5.0",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "vite": "^7.2.2",

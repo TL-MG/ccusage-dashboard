@@ -15,6 +15,7 @@ import {
 const CCUSAGE_BIN = process.env.CCUSAGE_BIN || 'ccusage';
 const CACHE_TTL_MS = 30_000;
 const MAX_BUFFER = 64 * 1024 * 1024;
+const TOKEN_ONLY_ARGS = ['--offline'];
 
 type UnknownRecord = Record<string, unknown>;
 type CacheEntry<T> = { expiresAt: number; promise: Promise<T> };
@@ -165,15 +166,103 @@ function normalizeUsageRows(
   });
 }
 
+function emptyUsageRow(
+  period: string,
+  granularity: Granularity,
+  from: string,
+  to: string,
+): UsageRow {
+  return {
+    period,
+    ...getPeriodRange(period, granularity, from, to),
+    totalTokens: 0,
+    inputTokens: 0,
+    outputTokens: 0,
+    cacheReadTokens: 0,
+    cacheCreationTokens: 0,
+    agents: [],
+    modelsUsed: [],
+  };
+}
+
+function periodSequence(
+  rows: UsageRow[],
+  granularity: Granularity,
+  from: string,
+  to: string,
+): string[] {
+  const rangeStart = parseDate(from);
+  const rangeEnd = parseDate(to);
+  if (!rangeStart || !rangeEnd) return rows.map((row) => row.period);
+
+  const periods: string[] = [];
+  if (granularity === 'monthly') {
+    for (
+      let cursor = new Date(Date.UTC(rangeStart.getUTCFullYear(), rangeStart.getUTCMonth(), 1));
+      cursor <= rangeEnd;
+      cursor = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 1))
+    ) {
+      periods.push(formatDate(cursor).slice(0, 7));
+    }
+    return periods;
+  }
+
+  let cursor = rangeStart;
+  let stepDays = 1;
+  if (granularity === 'weekly') {
+    const firstRowDate = rows.map((row) => parseDate(row.period)).find(Boolean);
+    const weekStartDay = firstRowDate?.getUTCDay() ?? 1;
+    const daysSinceWeekStart = (rangeStart.getUTCDay() - weekStartDay + 7) % 7;
+    cursor = addDays(rangeStart, -daysSinceWeekStart);
+    stepDays = 7;
+  }
+
+  for (; cursor <= rangeEnd; cursor = addDays(cursor, stepDays)) {
+    periods.push(formatDate(cursor));
+  }
+  return periods;
+}
+
+export function fillMissingUsageRows(
+  rows: UsageRow[],
+  granularity: Granularity,
+  from: string,
+  to: string,
+): UsageRow[] {
+  const rowsByPeriod = new Map(rows.map((row) => [row.period, row]));
+  const periods = periodSequence(rows, granularity, from, to);
+  const filled = periods.map((period) =>
+    rowsByPeriod.get(period) ?? emptyUsageRow(period, granularity, from, to),
+  );
+  const periodSet = new Set(periods);
+  const extras = rows.filter((row) => !periodSet.has(row.period));
+  return [...filled, ...extras].sort((a, b) => a.period.localeCompare(b.period));
+}
+
 export function normalizeUsagePayload(
   payload: unknown,
   from: string,
   to: string,
 ): Omit<UsageResponse, 'generatedAt' | 'range'> {
   const raw = asRecord(payload);
-  const daily = normalizeUsageRows(raw.daily, 'daily', from, to);
-  const weekly = normalizeUsageRows(raw.weekly, 'weekly', from, to);
-  const monthly = normalizeUsageRows(raw.monthly, 'monthly', from, to);
+  const daily = fillMissingUsageRows(
+    normalizeUsageRows(raw.daily, 'daily', from, to),
+    'daily',
+    from,
+    to,
+  );
+  const weekly = fillMissingUsageRows(
+    normalizeUsageRows(raw.weekly, 'weekly', from, to),
+    'weekly',
+    from,
+    to,
+  );
+  const monthly = fillMissingUsageRows(
+    normalizeUsageRows(raw.monthly, 'monthly', from, to),
+    'monthly',
+    from,
+    to,
+  );
   const agentIds = [...daily, ...weekly, ...monthly].flatMap((row) =>
     row.agents.map((agent) => agent.agent),
   );
@@ -288,6 +377,7 @@ export function getUsage(from: string, to: string, refresh = false): Promise<Usa
       '--sections',
       'daily,weekly,monthly',
       ...dateArgs(from, to),
+      ...TOKEN_ONLY_ARGS,
     ]);
 
     return {
@@ -331,7 +421,13 @@ export function getSessions(
 
     const results = await mapLimit(agents, 3, async (agentId) => {
       try {
-        const payload = await runJson([agentId, 'session', '--json', ...dateArgs(from, to)]);
+        const payload = await runJson([
+          agentId,
+          'session',
+          '--json',
+          ...dateArgs(from, to),
+          ...TOKEN_ONLY_ARGS,
+        ]);
         return { sessions: normalizeSessionPayload(payload, agentId), warning: null };
       } catch (error) {
         if (agent !== 'all') throw error;

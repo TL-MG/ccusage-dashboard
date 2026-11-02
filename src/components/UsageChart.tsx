@@ -25,11 +25,13 @@ echarts.use([
 ]);
 
 type ViewMode = 'agent' | 'time';
+type ChartType = 'bar' | 'line';
 
 interface UsageChartProps {
   rows: UsageRow[];
   granularity: Granularity;
   viewMode: ViewMode;
+  chartType: ChartType;
   selectedAgent: string;
   metric: MetricKey;
   onSelect: (row: UsageRow, agent?: string) => void;
@@ -39,6 +41,7 @@ export default function UsageChart({
   rows,
   granularity,
   viewMode,
+  chartType,
   selectedAgent,
   metric,
   onSelect,
@@ -75,36 +78,50 @@ export default function UsageChart({
           const meta = getAgentMeta(agentId);
           return {
             name: meta.label,
-            type: 'bar' as const,
-            stack: 'tokens',
-            barMaxWidth: 42,
+            type: chartType,
             emphasis: { focus: 'series' as const },
             itemStyle: { color: meta.color },
             data: rows.map((row) =>
               row.agents.find((agent) => agent.agent === agentId)?.[metric] ?? 0,
             ),
+            ...(chartType === 'bar'
+              ? { stack: 'tokens', barMaxWidth: 42 }
+              : {
+                  smooth: 0.25,
+                  symbol: 'circle',
+                  symbolSize: 7,
+                  showSymbol: rows.length <= 45,
+                  lineStyle: { width: 2.5, color: meta.color },
+                }),
           };
         })
       : [{
           name: selectedAgent === 'all' ? '全部 Agent' : getAgentMeta(selectedAgent).label,
-          type: 'line' as const,
-          smooth: 0.25,
-          symbol: 'circle',
-          symbolSize: 8,
-          showSymbol: rows.length <= 45,
-          lineStyle: { width: 3, color: '#5b5bd6' },
-          itemStyle: { color: '#5b5bd6', borderColor: '#ffffff', borderWidth: 2 },
-          areaStyle: {
-            color: {
-              type: 'linear' as const,
-              x: 0, y: 0, x2: 0, y2: 1,
-              colorStops: [
-                { offset: 0, color: 'rgba(91, 91, 214, 0.28)' },
-                { offset: 1, color: 'rgba(91, 91, 214, 0.02)' },
-              ],
-            },
-          },
+          type: chartType,
           data: rows.map((row) => metricsForAgent(row, selectedAgent)[metric]),
+          ...(chartType === 'bar'
+            ? {
+                barMaxWidth: 48,
+                itemStyle: { color: '#5b5bd6', borderRadius: [6, 6, 0, 0] },
+              }
+            : {
+                smooth: 0.25,
+                symbol: 'circle',
+                symbolSize: 8,
+                showSymbol: rows.length <= 45,
+                lineStyle: { width: 3, color: '#5b5bd6' },
+                itemStyle: { color: '#5b5bd6', borderColor: '#ffffff', borderWidth: 2 },
+                areaStyle: {
+                  color: {
+                    type: 'linear' as const,
+                    x: 0, y: 0, x2: 0, y2: 1,
+                    colorStops: [
+                      { offset: 0, color: 'rgba(91, 91, 214, 0.28)' },
+                      { offset: 1, color: 'rgba(91, 91, 214, 0.02)' },
+                    ],
+                  },
+                },
+              }),
         }];
 
     const option: EChartsCoreOption = {
@@ -113,7 +130,7 @@ export default function UsageChart({
       color: agentIds.map((id) => getAgentMeta(id).color),
       tooltip: {
         trigger: 'axis',
-        axisPointer: { type: viewMode === 'agent' ? 'shadow' : 'line' },
+        axisPointer: { type: chartType === 'bar' ? 'shadow' : 'line' },
         confine: true,
         valueFormatter: (value: unknown) => `${formatNumber(Number(value))} tokens`,
       },
@@ -174,7 +191,15 @@ export default function UsageChart({
       const agent = viewMode === 'agent' ? agentIds[seriesIndex] : selectedAgent;
       onSelect(rows[dataIndex], agent || selectedAgent);
     });
-  }, [agentIds, granularity, metric, onSelect, rows, selectedAgent, viewMode]);
+  }, [agentIds, chartType, granularity, metric, onSelect, rows, selectedAgent, viewMode]);
 
-  return <div ref={containerRef} className="usage-chart" role="img" aria-label="Token 用量趋势图" />;
+  return (
+    <div
+      ref={containerRef}
+      className="usage-chart"
+      role="img"
+      data-chart-type={chartType}
+      aria-label={`Token 用量${chartType === 'bar' ? '柱状图' : '折线图'}`}
+    />
+  );
 }

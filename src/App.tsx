@@ -51,6 +51,7 @@ import {
 const { RangePicker } = DatePicker;
 type DateRange = [Dayjs, Dayjs];
 type ViewMode = 'agent' | 'time';
+type ChartType = 'bar' | 'line';
 
 interface DetailRow extends TokenMetrics {
   key: string;
@@ -71,6 +72,7 @@ export default function App() {
   const [selectedAgent, setSelectedAgent] = useState('all');
   const [granularity, setGranularity] = useState<Granularity>('daily');
   const [viewMode, setViewMode] = useState<ViewMode>('agent');
+  const [chartType, setChartType] = useState<ChartType>('bar');
   const [metric, setMetric] = useState<MetricKey>('totalTokens');
   const [usage, setUsage] = useState<UsageResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -124,30 +126,30 @@ export default function App() {
   const currentRows = useMemo(() => usage?.[granularity] ?? [], [granularity, usage]);
 
   const tableRows = useMemo<DetailRow[]>(() => {
-    if (viewMode === 'time') {
-      return currentRows.map((row) => ({
-        ...metricsForAgent(row, selectedAgent),
-        key: row.period,
-        period: row.period,
-        startDate: row.startDate,
-        endDate: row.endDate,
-        source: row,
-      }));
-    }
-
-    return currentRows.flatMap((row) =>
-      row.agents
-        .filter((agent) => selectedAgent === 'all' || agent.agent === selectedAgent)
-        .map((agent) => ({
-          ...agent,
-          key: `${row.period}:${agent.agent}`,
+    const rows = viewMode === 'time'
+      ? currentRows.map((row) => ({
+          ...metricsForAgent(row, selectedAgent),
+          key: row.period,
           period: row.period,
           startDate: row.startDate,
           endDate: row.endDate,
           source: row,
-          agent,
-        })),
-    );
+        }))
+      : currentRows.flatMap((row) =>
+          row.agents
+            .filter((agent) => selectedAgent === 'all' || agent.agent === selectedAgent)
+            .map((agent) => ({
+              ...agent,
+              key: `${row.period}:${agent.agent}`,
+              period: row.period,
+              startDate: row.startDate,
+              endDate: row.endDate,
+              source: row,
+              agent,
+            })),
+        );
+
+    return rows.sort((a, b) => b.period.localeCompare(a.period));
   }, [currentRows, selectedAgent, viewMode]);
 
   const openSessions = useCallback((row: UsageRow, agent?: string) => {
@@ -401,6 +403,15 @@ export default function App() {
                   { value: 'time', label: <span><LineChartOutlined /> 按时间</span> },
                 ]}
               />
+              <Segmented
+                aria-label="图表类型"
+                value={chartType}
+                onChange={(value) => setChartType(value as ChartType)}
+                options={[
+                  { value: 'bar', label: <span><BarChartOutlined /> 柱状图</span> },
+                  { value: 'line', label: <span><LineChartOutlined /> 折线图</span> },
+                ]}
+              />
               <Select
                 value={metric}
                 onChange={setMetric}
@@ -419,6 +430,7 @@ export default function App() {
                 rows={currentRows}
                 granularity={granularity}
                 viewMode={viewMode}
+                chartType={chartType}
                 selectedAgent={selectedAgent}
                 metric={metric}
                 onSelect={openSessions}

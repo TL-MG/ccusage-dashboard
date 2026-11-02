@@ -22,7 +22,12 @@ describe('ccusage usage normalization', () => {
       monthly: [{ period: '2026-10', ...metrics, agents: [{ agent: 'claude', ...metrics }] }],
     }, '2026-10-01', '2026-10-29');
 
-    expect(result.daily[0]).toMatchObject({ startDate: '2026-10-29', endDate: '2026-10-29' });
+    expect(result.daily).toHaveLength(29);
+    expect(result.daily.find((row) => row.period === '2026-10-29')).toMatchObject({
+      startDate: '2026-10-29',
+      endDate: '2026-10-29',
+    });
+    expect(result.weekly).toHaveLength(5);
     expect(result.agents[0]).toMatchObject({ id: 'claude', label: 'Claude Code' });
     expect(result.totals).toEqual(metrics);
   });
@@ -32,6 +37,47 @@ describe('ccusage usage normalization', () => {
       startDate: '2026-10-01',
       endDate: '2026-10-29',
     });
+  });
+});
+
+describe('continuous time axis', () => {
+  it('fills missing dates with zero tokens without changing totals', () => {
+    const result = normalizeUsagePayload({
+      daily: [{ period: '2026-10-02', ...metrics, agents: [{ agent: 'claude', ...metrics }] }],
+      weekly: [],
+      monthly: [],
+    }, '2026-10-01', '2026-10-03');
+
+    expect(result.daily.map((row) => row.period)).toEqual([
+      '2026-10-01',
+      '2026-10-02',
+      '2026-10-03',
+    ]);
+    for (const row of [result.daily[0], result.daily[2]]) {
+      expect(row).toMatchObject({ totalTokens: 0, inputTokens: 0, outputTokens: 0, agents: [] });
+    }
+    expect(result.totals).toEqual(metrics);
+  });
+
+  it('creates complete daily, weekly, and monthly axes for an empty range', () => {
+    const result = normalizeUsagePayload({
+      daily: [],
+      weekly: [],
+      monthly: [],
+    }, '2026-09-30', '2026-10-29');
+
+    expect(result.daily).toHaveLength(30);
+    expect(result.weekly.map((row) => row.period)).toEqual([
+      '2026-09-28',
+      '2026-10-05',
+      '2026-10-12',
+      '2026-10-19',
+      '2026-10-26',
+    ]);
+    expect(result.monthly.map((row) => row.period)).toEqual(['2026-09', '2026-10']);
+    expect(result.weekly[0]).toMatchObject({ startDate: '2026-09-30', endDate: '2026-10-04' });
+    expect(result.weekly.at(-1)).toMatchObject({ startDate: '2026-10-26', endDate: '2026-10-29' });
+    expect([...result.daily, ...result.weekly, ...result.monthly].every((row) => row.totalTokens === 0)).toBe(true);
   });
 });
 
