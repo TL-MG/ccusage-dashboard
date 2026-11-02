@@ -9,7 +9,7 @@
 要求 Node.js **22.13 或更高版本**：
 
 ```bash
-npx -y -p ccusage-dashboard@latest ccusage-dashboard
+npx -y -p @taolux/ccusage-dashboard@latest ccusage-dashboard
 ```
 
 启动后会自动打开默认浏览器，地址默认为：
@@ -21,7 +21,7 @@ http://127.0.0.1:8787
 也可以全局安装：
 
 ```bash
-npm install -g ccusage-dashboard
+npm install -g @taolux/ccusage-dashboard
 ccusage-dashboard
 ```
 
@@ -44,13 +44,13 @@ ccusage-dashboard [options]
 
 ```bash
 # 使用 9000 端口，不自动打开浏览器
-npx -y -p ccusage-dashboard@latest ccusage-dashboard --port 9000 --no-open
+npx -y -p @taolux/ccusage-dashboard@latest ccusage-dashboard --port 9000 --no-open
 
 # 自动选择空闲端口
-npx -y -p ccusage-dashboard@latest ccusage-dashboard --port 0
+npx -y -p @taolux/ccusage-dashboard@latest ccusage-dashboard --port 0
 
 # 使用已有的 ccusage
-npx -y -p ccusage-dashboard@latest ccusage-dashboard --ccusage /path/to/ccusage
+npx -y -p @taolux/ccusage-dashboard@latest ccusage-dashboard --ccusage /path/to/ccusage
 ```
 
 也可通过 `CCUSAGE_BIN` 环境变量指定 ccusage。
@@ -126,7 +126,7 @@ npm publish --access public
 发布后在与源码不同的目录验证：
 
 ```bash
-npx -y -p ccusage-dashboard@latest ccusage-dashboard
+npx -y -p @taolux/ccusage-dashboard@latest ccusage-dashboard
 ```
 
 ## License

@@ -1,5 +1,5 @@
 {
-  "name": "ccusage-dashboard",
+  "name": "@taolux/ccusage-dashboard",
   "version": "0.1.0",
   "type": "module",
   "description": "Community web dashboard for visualizing coding agent token usage with ccusage.",
@@ -13,7 +13,7 @@
     "url": "https://github.com/TL-MG/ccusage-dashboard/issues"
   },
   "bin": {
-    "ccusage-dashboard": "./dist/cli.js"
+    "ccusage-dashboard": "dist/cli.js"
   },
   "files": [
     "dist",

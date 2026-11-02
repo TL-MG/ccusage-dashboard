@@ -16,7 +16,7 @@ Local web dashboard for coding agent token usage, powered by ccusage.
 
 Usage:
   ccusage-dashboard [options]
-  npx -y -p ccusage-dashboard@latest ccusage-dashboard
+  npx -y -p @taolux/ccusage-dashboard@latest ccusage-dashboard
 
 Options:
   -p, --port <port>       Listen port (default: 8787; use 0 for a free port)
